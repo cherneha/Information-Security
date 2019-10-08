@@ -12,30 +12,23 @@ constants = np.array([ 0x428A2F98, 0x71374491, 0xB5C0FBCF, 0xE9B5DBA5, 0x3956C25
                        0x748F82EE, 0x78A5636F, 0x84C87814, 0x8CC70208, 0x90BEFFFA, 0xA4506CEB, 0xBEF9A3F7, 0xC67178F2],
                        dtype=np.uint32)
 
-def rightshift(ba, count):
-    return (bitarray('0') * count) + ba[:-count]
+def right_shift(bin, count):
+    return (bitarray('0') * count) + bin[:-count]
 
-def rotr(bin, n):
-    return bin[n:] + bin[:n]
+def right_rotate(bin, n):
+    return bin[-n:] + bin[:-n]
 
-def moduloAddition(*args):
+def add_mod_2(*args):
     sum = bitarray(32 * '0')
     for arg in args:
         shift = 0
         for i in range(31, -1, -1):
-            # print(int(arg[i]))
-            # print(int(sum[i]))
             bit_sum = int(arg[i]) + int(sum[i]) + shift
-            # print("bit sum = ", bit_sum)
-            # print("bit_sum % 2 = ", bit_sum % 2, " ", str(bit_sum % 2))
             sum[i] = bool(bit_sum % 2)
-            # print("new sum[i] = ", sum[i])
-            # print("shift = ", shift)
             if bit_sum > 1:
                 shift = 1
             else:
                 shift = 0
-        # print(sum)
     return sum
 
 def get_K(L):
@@ -49,13 +42,11 @@ def prepare(message):
     m.frombytes(message.encode('utf-8'))
     L = len(m)
     m.append(True)
+    # pad with zeros
     m.extend([False] * get_K(L))
-    end = bitarray(format(L, 'b'), endian='big')
-    # print(end)
-    p = bitarray(64 - len(end))
-    end = p + end
-    # print(p)
-    # print(end)
+
+    # append 64-bit message length
+    end = bitarray(format(L, '0>64b'), endian='big')
     m = m + end
     return m
 
@@ -76,13 +67,6 @@ def process_in_chunks(m):
         for j in range(0, 16):
             slice = chunk[j * 32 : (j + 1) * 32]
             w[j] = slice
-        for j in range (16, 64):
-            r1 = rotr(w[j - 15], 7)
-            r2 = rotr(w[j - 15], 18)
-            r3 = rightshift(w[j - 15], 3)
-            s0 = r1 ^ r2 ^ r3
-            s1 = rotr(w[j - 2], 17) ^ rotr(w[j - 2], 19) ^ rightshift(w[j - 2], 10)
-            w[j] = moduloAddition(w[j - 16],  s0, w[j - 7], s1)
 
         a = h0
         b = h1
@@ -93,44 +77,54 @@ def process_in_chunks(m):
         g = h6
         h = h7
 
-        for i in range(0, 64):
-            S1 = rotr(e, 6) ^ \
-                 rotr(e, 11) ^ \
-                 rotr(e, 25)
+        for j in range (16, 64):
+            s0 = right_rotate(w[j - 15], 7) ^ right_rotate(w[j - 15], 18) ^ right_shift(w[j - 15], 3)
+            s1 = right_rotate(w[j - 2], 17) ^ right_rotate(w[j - 2], 19) ^ right_shift(w[j - 2], 10)
+            w[j] = add_mod_2(w[j - 16], s0, w[j - 7], s1)
+
+        for j in range(0, 64):
+            S1 = right_rotate(e, 6) ^ right_rotate(e, 11) ^ right_rotate(e, 25)
             ch = (e & f) ^ (~e & g)
-            temp1 = moduloAddition(h, S1, ch, bitarray(format(constants[i], '0>32b')), w[i])
-            S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)
+            temp1 = add_mod_2(h, S1, ch, bitarray(format(constants[j], '0>32b')), w[j])
+            S0 = right_rotate(a, 2) ^ right_rotate(a, 13) ^ right_rotate(a, 22)
             maj = (a & b) ^ (a & c) ^ (b & c)
-            temp2 = moduloAddition(S0, maj)
+            temp2 = add_mod_2(S0, maj)
 
             h = g
             g = f
             f = e
-            e = moduloAddition(d, temp1)
+            e = add_mod_2(d, temp1)
             d = c
             c = b
             b = a
-            a = moduloAddition(temp1, temp2)
+            a = add_mod_2(temp1, temp2)
 
-        h0 = moduloAddition(h0, a)
-        h1 = moduloAddition(h1, b)
-        h2 = moduloAddition(h2, c)
-        h3 = moduloAddition(h3, d)
-        h4 = moduloAddition(h4, e)
-        h5 = moduloAddition(h5, f)
-        h6 = moduloAddition(h6, g)
-        h7 = moduloAddition(h7, h)
+        h0 = add_mod_2(h0, a)
+        h1 = add_mod_2(h1, b)
+        h2 = add_mod_2(h2, c)
+        h3 = add_mod_2(h3, d)
+        h4 = add_mod_2(h4, e)
+        h5 = add_mod_2(h5, f)
+        h6 = add_mod_2(h6, g)
+        h7 = add_mod_2(h7, h)
 
     hash = h0 + h1 + h2 + h3 + h4 + h5 + h6 + h7
     return hash
 
-if __name__ == '__main__':
-    m = prepare("")
-    hash = process_in_chunks(m)
-
+def to_hex(bin):
     hex = ""
-    for i in range(0, 64):
-        block = hash[i * 4: (i + 1) * 4]
+    for i in range(0, int(len(bin)/4)):
+        block = bin[i * 4: (i + 1) * 4]
         num = block[0] * 8 + block[1] * 4 + block[2] * 2 + block[3] * 1
         hex += str(format(num, 'x'))
+    return hex
+
+def sha256(text):
+    m = prepare(text)
+    hash = process_in_chunks(m)
+    hex = to_hex(hash)
     print(hex)
+    return hex
+
+if __name__ == '__main__':
+    sha256("")
