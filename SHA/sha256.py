@@ -123,8 +123,7 @@ def sha256(text):
     m = prepare(text)
     hash = process_in_chunks(m)
     hex = to_hex(hash)
-    print(hex)
-    return hex
+    return hash
 
 if __name__ == '__main__':
     sha256("")
