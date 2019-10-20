@@ -1,8 +1,6 @@
-import math
-# from bitstring import BitArray
 from bitarray import bitarray
 from functools import reduce
-from utils import *
+from SHA.utils import *
 
 class Keccak:
 
@@ -145,11 +143,14 @@ class Keccak:
     def keccak(self, M):
         return self.sponge(self.keccak_p, 1088, M, 256)
 
-    def SHA3_256(self, M):
-        b = bitarray()
-        b.frombytes(M.encode('utf-8'))
+    def SHA3_256(self, M, bin_input=False):
+        if bin_input:
+            b = M
+        else:
+            b = bitarray()
+            b.frombytes(M.encode('utf-8'))
         bitstr = self.keccak(b)
-        return to_hex(bitarray(bitstr))
+        return bitarray(bitstr)
 
 
 if __name__ == '__main__':

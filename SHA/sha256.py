@@ -1,6 +1,7 @@
 import numpy as np
 import math
 from bitarray import bitarray
+from SHA.utils import *
 
 constants = np.array([ 0x428A2F98, 0x71374491, 0xB5C0FBCF, 0xE9B5DBA5, 0x3956C25B, 0x59F111F1, 0x923F82A4, 0xAB1C5ED5,
                        0xD807AA98, 0x12835B01, 0x243185BE, 0x550C7DC3, 0x72BE5D74, 0x80DEB1FE, 0x9BDC06A7, 0xC19BF174,
@@ -37,9 +38,12 @@ def get_K(L):
     K = ((floor + 1) * 512 - floor * 512 -  rest) % 512
     return K
 
-def prepare(message):
-    m = bitarray()
-    m.frombytes(message.encode('utf-8'))
+def prepare(message, bin_input=False):
+    if bin_input:
+        m = message
+    else:
+        m = bitarray()
+        m.frombytes(message.encode('utf-8'))
     L = len(m)
     m.append(True)
     # pad with zeros
@@ -111,16 +115,8 @@ def process_in_chunks(m):
     hash = h0 + h1 + h2 + h3 + h4 + h5 + h6 + h7
     return hash
 
-def to_hex(bin):
-    hex = ""
-    for i in range(0, int(len(bin)/4)):
-        block = bin[i * 4: (i + 1) * 4]
-        num = block[0] * 8 + block[1] * 4 + block[2] * 2 + block[3] * 1
-        hex += str(format(num, 'x'))
-    return hex
-
-def sha256(text):
-    m = prepare(text)
+def sha256(text, bin_input=False):
+    m = prepare(text, bin_input)
     hash = process_in_chunks(m)
     hex = to_hex(hash)
     return hash
