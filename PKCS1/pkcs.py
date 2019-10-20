@@ -46,7 +46,6 @@ def OS2IP(X):
         p += 1
     return (x)
 
-
 def I2OSP(x, xLen):
     if x >= 256 ** xLen:
         print("integer too large")
@@ -58,20 +57,17 @@ def I2OSP(x, xLen):
 
 def RSASP1(K, m):
     n, d = K
-    print("getting power")
     s = (m ** d) % n
-    print("finished getting power")
     return s
 
-def sieve_of_eratosthenos(N_from, N_to):
-    nums = [x for x in range(N_from, N_to + 1)]
-    for i in range(2, math.floor(math.sqrt(N_to))):
-        nums = [x for x in nums if x % i != 0]
-    return nums
+def RSAVP1(public_key, s):
+    n, e = public_key
+    m = (s ** e) % n
+    return m
 
 def RSASSA_PKCS1_V1_5_VERIFY(public_key, M, S):
     n, e, modBits = public_key
-    k = int(len(S / 8))
+    k = int(len(S) / 8)
     s = OS2IP(S)
     m = RSAVP1((n, e), s)
     EM = I2OSP(m, math.ceil((modBits - 1) / 8))
@@ -81,11 +77,6 @@ def RSASSA_PKCS1_V1_5_VERIFY(public_key, M, S):
     else:
         print("Invalid signature")
 
-def RSAVP1(public_key, s):
-    n, e = public_key
-    m = (s ** e) % n
-    return m
-
 if __name__ == '__main__':
     key = RSA.generate(1024)
     privateKey = key.exportKey('DER')
@@ -93,10 +84,7 @@ if __name__ == '__main__':
     n = key.n
     d = key.d
     e = key.e
-    print("keys generated")
     message = "happy kitty, sleepy kitty"
     signature = RSASSA_PKCS1_V1_5_SIGN((n, d), message)
-    print("message signed")
     RSASSA_PKCS1_V1_5_VERIFY((n, e, 1024), message, signature)
-    print("signature verified")
 
